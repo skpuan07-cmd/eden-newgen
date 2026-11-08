@@ -1,0 +1,78 @@
+[
+  {
+    "text": "Administration",
+    "href": "/eden/admin/index"
+  },
+  {
+    "text": "Profile",
+    "href": "/eden/default/person"
+  },
+  {
+    "text": "Change Password",
+    "href": "/eden/default/user/change_password"
+  },
+  {
+    "text": "Logout",
+    "href": "/eden/default/user/logout"
+  },
+  {
+    "text": "Organizations",
+    "href": "/eden/org/index"
+  },
+  {
+    "text": "Staff",
+    "href": "/eden/hrm/index"
+  },
+  {
+    "text": "Volunteers",
+    "href": "/eden/vol/index"
+  },
+  {
+    "text": "Projects",
+    "href": "/eden/project/index"
+  },
+  {
+    "text": "Warehouses",
+    "href": "/eden/inv/index"
+  },
+  {
+    "text": "Assets",
+    "href": "/eden/asset/index"
+  },
+  {
+    "text": "Map",
+    "href": "/eden/gis/index"
+  },
+  {
+    "text": "Person Registry",
+    "href": "/eden/pr/index"
+  },
+  {
+    "text": "Content Management",
+    "href": "/eden/cms/index"
+  },
+  {
+    "text": "Documents",
+    "href": "/eden/doc/index"
+  },
+  {
+    "text": "Vehicles",
+    "href": "/eden/vehicle/index"
+  },
+  {
+    "text": "Requests",
+    "href": "/eden/req/index"
+  },
+  {
+    "text": "Help",
+    "href": "/eden/default/help"
+  },
+  {
+    "text": "Contact",
+    "href": "/eden/default/contact"
+  },
+  {
+    "text": "Version",
+    "href": "/eden/default/about"
+  }
+]
