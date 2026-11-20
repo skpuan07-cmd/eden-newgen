@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# Sahana Eden — Startup Script
+# Sahana Eden — Startup Script (web2py + FastAPI)
 # ============================================================
 # Usage:
 #   ./start_eden.sh                # foreground, random password
@@ -10,8 +10,14 @@
 
 set -e
 
-WEB2PY_DIR="/home/z/my-project/eden_install/web2py"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+WEB2PY_DIR="$PROJECT_DIR/eden_install/web2py"
+PYTHON="$PROJECT_DIR/.venv/bin/python"
+FASTAPI_DIR="$WEB2PY_DIR/applications/eden/fastapi_app"
+FASTAPI_SERVER="$PROJECT_DIR/.venv/bin/uvicorn"
 PORT="${EDEN_PORT:-8000}"
+API_PORT="${EDEN_API_PORT:-8001}"
 IP="${EDEN_IP:-127.0.0.1}"
 
 # If no password provided, generate one
@@ -31,6 +37,7 @@ echo "============================================================"
 echo "  Directory : $WEB2PY_DIR"
 echo "  Listen IP : $IP"
 echo "  Port      : $PORT"
+echo "  API Port  : $API_PORT"
 echo "  Admin PW  : $ADMIN_PW"
 echo "  Mode      : ${BACKGROUND:-foreground}"
 echo "============================================================"
@@ -49,9 +56,30 @@ echo "============================================================"
 echo ""
 
 cd "$WEB2PY_DIR"
+"$PYTHON" "$SCRIPT_DIR/configure_eden_home.py" "$WEB2PY_DIR"
+
+start_api() {
+  if curl -fsS "http://$IP:$API_PORT/eden/health/" >/dev/null 2>&1; then
+    echo "✓ FastAPI already ready at http://localhost:$API_PORT"
+    return
+  fi
+
+  if [ ! -x "$FASTAPI_SERVER" ] || [ ! -f "$FASTAPI_DIR/main.py" ]; then
+    echo "FastAPI is not installed. Set up the project .venv and Eden runtime first." >&2
+    exit 1
+  fi
+
+  DATABASE_URL="sqlite+aiosqlite:///$PROJECT_DIR/eden_fastapi.db" \
+    nohup "$FASTAPI_SERVER" main:app --app-dir "$FASTAPI_DIR" \
+      --host="$IP" --port="$API_PORT" > /tmp/eden-fastapi.log 2>&1 &
+  API_PID=$!
+  echo "$API_PID" > /tmp/eden-fastapi.pid
+  echo "✓ FastAPI started (PID: $API_PID), log: /tmp/eden-fastapi.log"
+}
 
 if [ "$BACKGROUND" = "daemon" ]; then
-  nohup python3 web2py.py --no_gui -a "$ADMIN_PW" --ip="$IP" --port="$PORT" \
+  start_api
+  nohup "$PYTHON" web2py.py --no_gui -a "$ADMIN_PW" --ip="$IP" --port="$PORT" \
        > /tmp/web2py.log 2>&1 &
   PID=$!
   echo $PID > /tmp/web2py.pid
@@ -67,9 +95,22 @@ if [ "$BACKGROUND" = "daemon" ]; then
     fi
     sleep 1
   done
+  for i in $(seq 1 30); do
+    if curl -fsS -o /dev/null "http://$IP:$API_PORT/eden/health/" 2>/dev/null; then
+      echo "✓ API ready after ${i}s — http://localhost:$API_PORT/eden/docs"
+      API_READY=1
+      break
+    fi
+    sleep 1
+  done
+  if [ "${API_READY:-0}" -ne 1 ]; then
+    echo "FastAPI did not become ready; inspect /tmp/eden-fastapi.log." >&2
+    exit 1
+  fi
 else
   # Foreground — Ctrl+C to stop
+  start_api
   echo "Starting in foreground. Press Ctrl+C to stop."
   echo ""
-  exec python3 web2py.py --no_gui -a "$ADMIN_PW" --ip="$IP" --port="$PORT"
+  exec "$PYTHON" web2py.py --no_gui -a "$ADMIN_PW" --ip="$IP" --port="$PORT"
 fi

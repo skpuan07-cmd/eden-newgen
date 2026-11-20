@@ -1,43 +1,65 @@
 'use client';
 import { useState } from 'react';
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState('admin@example.com');
   const [password, setPassword] = useState('admin123');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    setSuccess(false);
 
     try {
-      // Use RELATIVE URL — goes through Next.js rewrite proxy to FastAPI
       const params = new URLSearchParams();
       params.append('username', email);
       params.append('password', password);
 
-      const res = await fetch('/api/eden/api/v2/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: params.toString(),
-      });
-
-      const data = await res.json();
-
-      if (res.ok && data.access_token) {
-        localStorage.setItem('eden_token', data.access_token);
-        localStorage.setItem('eden_user', JSON.stringify(data.user));
-        setSuccess(true);
-        setTimeout(() => { window.location.href = '/dashboard'; }, 800);
-      } else {
-        setError(data.detail || 'เข้าสู่ระบบไม่สำเร็จ');
+      let res: Response;
+      try {
+        res = await fetch('/api/eden/api/v2/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: params.toString(),
+        });
+      } catch {
+        setError('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่ภายหลัง');
+        return;
       }
-    } catch (err) {
-      setError('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ — พิมพ์ "run eden" เพื่อรีสตาร์ท');
+
+      let data: unknown;
+      try {
+        data = await res.json();
+      } catch {
+        setError('เซิร์ฟเวอร์ตอบกลับข้อมูลไม่ถูกต้อง');
+        return;
+      }
+
+      if (!res.ok) {
+        const detail = isRecord(data) && typeof data.detail === 'string'
+          ? data.detail
+          : 'เข้าสู่ระบบไม่สำเร็จ';
+        setError(detail);
+        return;
+      }
+
+      if (
+        isRecord(data) &&
+        typeof data.access_token === 'string' &&
+        isRecord(data.user)
+      ) {
+        localStorage.setItem('eden_token', data.access_token);
+        localStorage.removeItem('eden_user');
+        window.location.replace('/dashboard');
+      } else {
+        setError('เซิร์ฟเวอร์ตอบกลับข้อมูลเข้าสู่ระบบไม่ครบถ้วน');
+      }
     } finally {
       setLoading(false);
     }
@@ -61,7 +83,6 @@ export default function LoginPage() {
             <input type="password" value={password} onChange={e => setPassword(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid #E2E8F0', borderRadius: '8px', fontSize: '1rem', boxSizing: 'border-box' }} required />
           </div>
           {error && <div style={{ background: '#FEE2E2', color: '#991B1B', padding: '0.75rem', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '1rem' }}>⚠ {error}</div>}
-          {success && <div style={{ background: '#D1FAE5', color: '#065F46', padding: '0.75rem', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '1rem' }}>✅ เข้าสู่ระบบสำเร็จ! กำลังไปหน้า Dashboard...</div>}
           <button type="submit" disabled={loading} style={{ width: '100%', padding: '0.75rem', background: '#1E3A8A', color: 'white', border: 'none', borderRadius: '8px', fontSize: '1rem', fontWeight: 600, cursor: loading ? 'wait' : 'pointer', opacity: loading ? 0.7 : 1 }}>
             {loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
           </button>

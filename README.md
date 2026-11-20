@@ -20,8 +20,11 @@ docker compose -f docker-compose.prod.yml up -d
 ```
 
 ## Login
+- Web frontend: http://localhost:3000/login
 - Email: admin@example.com
 - Password: admin123
+- Native Eden login: http://localhost:8000/eden/default/user/login
+- http://localhost:8000/ redirects to /eden/default/index
 
 ## API
 - Swagger UI: /eden/docs (49 endpoints)
