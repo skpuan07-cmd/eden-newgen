@@ -2,8 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const BACKEND = 'http://127.0.0.1:8001';
 
+<<<<<<< HEAD
 async function proxy(req: NextRequest, { params }: { params: { path: string[] } }) {
   const path = params.path.join('/');
+=======
+async function proxy(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
+  const { path: segments } = await params;
+  const path = segments.join('/');
+>>>>>>> 4d5abf907c02ad7517171d310ee1e0904ed49c7e
   const search = req.nextUrl.search;
   const url = `${BACKEND}/eden/${path}${search}`;
   
@@ -28,8 +34,19 @@ async function proxy(req: NextRequest, { params }: { params: { path: string[] } 
       if (k !== 'transfer-encoding' && k !== 'content-encoding') rh.set(k, v); 
     });
     return new NextResponse(body, { status: r.status, headers: rh });
+<<<<<<< HEAD
   } catch (e: any) {
     return NextResponse.json({ error: 'Backend unavailable', detail: e.message }, { status: 502 });
+=======
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error: 'Backend unavailable',
+        detail: error instanceof Error ? error.message : 'Unknown backend error',
+      },
+      { status: 502 },
+    );
+>>>>>>> 4d5abf907c02ad7517171d310ee1e0904ed49c7e
   }
 }
 

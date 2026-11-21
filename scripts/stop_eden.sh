@@ -1,30 +1,50 @@
 #!/bin/bash
-# Stop the running Sahana Eden / web2py server
-PIDFILE="/tmp/web2py.pid"
-if [ -f "$PIDFILE" ]; then
+# Stop the running Sahana Eden services.
+
+stop_service() {
+  NAME="$1"
+  PIDFILE="$2"
+  EXPECTED="$3"
+
+  if [ ! -f "$PIDFILE" ]; then
+    echo "$NAME pidfile not found."
+    return
+  fi
+
   PID=$(cat "$PIDFILE")
-  if kill -0 "$PID" 2>/dev/null; then
-    echo "Stopping web2py (PID: $PID)..."
-    kill -SIGTERM "$PID"
-    sleep 2
-    if kill -0 "$PID" 2>/dev/null; then
-      echo "Force killing..."
-      kill -9 "$PID"
+  case "$PID" in
+    ''|*[!0-9]*)
+      echo "Invalid $NAME pidfile."
+      rm -f "$PIDFILE"
+      return
+      ;;
+  esac
+
+  COMMAND=$(ps -p "$PID" -o args= 2>/dev/null || true)
+  case "$COMMAND" in
+    *"$EXPECTED"*) ;;
+    *)
+      echo "$NAME process not running (stale pidfile)."
+      rm -f "$PIDFILE"
+      return
+      ;;
+  esac
+
+  echo "Stopping $NAME (PID: $PID)..."
+  kill -SIGTERM "$PID"
+  for _ in $(seq 1 10); do
+    if ! kill -0 "$PID" 2>/dev/null; then
+      echo "✓ $NAME stopped."
+      rm -f "$PIDFILE"
+      return
     fi
-    echo "✓ Server stopped."
-  else
-    echo "Process $PID not running (stale pidfile)."
-  fi
+    sleep 1
+  done
+
+  echo "$NAME did not stop gracefully; sending SIGKILL."
+  kill -SIGKILL "$PID"
   rm -f "$PIDFILE"
-else
-  # Fallback: kill any web2py process
-  PIDS=$(pgrep -f "web2py.py --no_gui")
-  if [ -n "$PIDS" ]; then
-    echo "Killing web2py processes: $PIDS"
-    pkill -f "web2py.py --no_gui"
-    sleep 2
-    echo "✓ All web2py processes stopped."
-  else
-    echo "No web2py process found."
-  fi
-fi
+}
+
+stop_service "web2py" "/tmp/web2py.pid" "web2py.py --no_gui"
+stop_service "FastAPI" "/tmp/eden-fastapi.pid" "uvicorn main:app"
